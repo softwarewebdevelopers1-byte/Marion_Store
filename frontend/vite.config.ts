@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "icons/*.png"],
       manifest: {
-        name: "Kesi Store - Online Marketplace",
+        name: "Marion Store - Online Marketplace",
         short_name: "Kesi Store",
         description: "Quality products delivered to your doorstep",
         theme_color: "#0f172a",

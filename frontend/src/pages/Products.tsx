@@ -91,13 +91,12 @@ export default function Products() {
         v === "all" ||
         v === "relevance"
       ) {
-        if (k === "page" && v === 1) return; // keep page=1 implicit
         next.delete(k);
       } else {
         next.set(k, String(v));
       }
     });
-    if (update.page === undefined) next.delete("page");
+    if (update.page === undefined || update.page === 1) next.delete("page");
     setParams(next, { replace: true });
   }
 

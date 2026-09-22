@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { productService } from "../../services/productService";
+import { productService, subscribe } from "../../services/productService";
 import type { Product } from "../../types";
 import { formatPrice, formatDate } from "../../utils/format";
 import {
@@ -23,7 +23,7 @@ export default function ProductsList() {
     const load = () =>
       productService.listAdmin().then((p) => alive && setProducts(p));
     load();
-    const unsub = productService.subscribe(load);
+    const unsub = subscribe(load);
     return () => {
       alive = false;
       unsub();

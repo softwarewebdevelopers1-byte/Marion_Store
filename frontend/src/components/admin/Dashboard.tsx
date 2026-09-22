@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { productService } from "../../services/productService";
+import { productService, subscribe } from "../../services/productService";
 import type { Product } from "../../types";
 import { formatPrice } from "../../utils/format";
 import { Icons, StockBadge } from "../../components/ui";
@@ -15,7 +15,7 @@ export default function Dashboard() {
     const load = () =>
       productService.inventorySummary().then((s) => alive && setSummary(s));
     load();
-    const unsub = productService.subscribe?.(load);
+    const unsub = subscribe(load);
     return () => {
       alive = false;
       if (typeof unsub === "function") unsub();

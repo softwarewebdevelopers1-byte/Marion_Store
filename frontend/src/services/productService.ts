@@ -6,7 +6,7 @@ import type {
   ProductInput,
   SortOption,
 } from "../types";
-import { slugify, uniqueSlug } from "../utils/format";
+import { uniqueSlug } from "../utils/format";
 
 /**
  * In-memory store standing in for the backend.

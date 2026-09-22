@@ -3,11 +3,13 @@ import { storeConfig } from "../config/store";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export class HttpError extends Error {
+  status: number;
   constructor(
-    public status: number,
+    status: number,
     message: string,
   ) {
     super(message);
+    this.status = status;
   }
 }
 
