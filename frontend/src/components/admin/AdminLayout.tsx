@@ -1,6 +1,7 @@
-import { NavLink, Outlet, Link } from "react-router-dom";
-import { Icons } from "../ui";
+import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { storeConfig } from "../../config/store";
+import { Icons } from "../ui";
 
 const nav = [
   {
@@ -24,9 +25,40 @@ const nav = [
 ];
 
 export default function AdminLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    if (window.matchMedia("(min-width: 861px)").matches) return true;
+    return localStorage.getItem("admin.sidebarOpen") === "true";
+  });
+
+  useEffect(() => {
+    const onResize = () => {
+      if (window.matchMedia("(min-width: 861px)").matches) {
+        setSidebarOpen(true);
+      } else {
+        const saved = localStorage.getItem("admin.sidebarOpen");
+        if (saved !== null) {
+          setSidebarOpen(saved === "true");
+        } else {
+          setSidebarOpen(false);
+        }
+      }
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const toggle = () => {
+    const next = !sidebarOpen;
+    setSidebarOpen(next);
+    localStorage.setItem("admin.sidebarOpen", String(next));
+  };
+
   return (
-    <div className="admin-shell">
-      <aside className="admin-side">
+    <div
+      className={`admin-shell ${sidebarOpen ? "is-open" : "is-collapsed"}`}
+    >
+      <aside className="admin-side" id="admin-sidebar">
         <Link to="/" className="brand" style={{ padding: "0 8px 16px" }}>
           <img src={storeConfig.logo} alt="" width={28} height={28} />
           <span className="hide-mobile">{storeConfig.name}</span>
@@ -39,21 +71,40 @@ export default function AdminLayout() {
             key={n.to}
             to={n.to}
             end={n.end}
+            onClick={() => {
+              if (window.matchMedia("(max-width: 860px)").matches) {
+                setSidebarOpen(false);
+              }
+            }}
             className={({ isActive }) =>
               `admin-side__link ${isActive ? "active" : ""}`
             }
+            title={n.label}
           >
             {n.icon}
             <span>{n.label}</span>
           </NavLink>
         ))}
         <div style={{ flex: 1 }} />
-        <Link to="/" className="admin-side__link">
+        <Link to="/" className="admin-side__link" title="View storefront">
           <Icons.Arrow size={18} />
           <span>View storefront</span>
         </Link>
       </aside>
       <main className="admin-main">
+        <div className="admin-topbar">
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={toggle}
+            aria-label="Toggle sidebar"
+            aria-expanded={sidebarOpen}
+            aria-controls="admin-sidebar"
+          >
+            {sidebarOpen ? <Icons.X size={20} /> : <Icons.Menu size={20} />}
+          </button>
+          <span className="small muted">{storeConfig.name}</span>
+        </div>
         <Outlet />
       </main>
     </div>

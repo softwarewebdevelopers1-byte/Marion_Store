@@ -20,6 +20,13 @@ export default function Layout() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
   return (
     <>
       <a href="#main" className="sr-only">
@@ -57,10 +64,12 @@ export default function Layout() {
           </Link>
 
           <button
+            type="button"
             className="btn-icon show-mobile"
             onClick={() => setMenuOpen(true)}
             aria-label="Open menu"
             aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
           >
             <Icons.Menu size={20} />
           </button>
@@ -69,11 +78,20 @@ export default function Layout() {
 
       {menuOpen && (
         <>
-          <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />
-          <aside className="drawer" role="dialog" aria-label="Menu">
+          <div
+            className="drawer-backdrop"
+            onClick={() => setMenuOpen(false)}
+          />
+          <aside
+            className="drawer"
+            id="mobile-menu"
+            role="dialog"
+            aria-label="Menu"
+          >
             <div className="row between" style={{ marginBottom: 16 }}>
               <strong>Menu</strong>
               <button
+                type="button"
                 className="btn-icon"
                 onClick={() => setMenuOpen(false)}
                 aria-label="Close menu"
@@ -85,6 +103,7 @@ export default function Layout() {
               <NavLink
                 to="/"
                 end
+                onClick={() => setMenuOpen(false)}
                 className="admin-side__link"
                 style={{ color: "var(--text)" }}
               >
@@ -92,6 +111,7 @@ export default function Layout() {
               </NavLink>
               <NavLink
                 to="/products"
+                onClick={() => setMenuOpen(false)}
                 className="admin-side__link"
                 style={{ color: "var(--text)" }}
               >
@@ -99,6 +119,7 @@ export default function Layout() {
               </NavLink>
               <NavLink
                 to="/admin"
+                onClick={() => setMenuOpen(false)}
                 className="admin-side__link"
                 style={{ color: "var(--text)" }}
               >
