@@ -28,9 +28,15 @@ const ALLOWED_MIME: Record<string, string> = {
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_FILES = 8;
 
+export interface UploadOpts {
+  sellerId: string;
+  productId?: string;
+  keyPrefix?: string;
+}
+
 export async function uploadImage(
   file: Express.Multer.File,
-  opts: { sellerId: string; productId: string },
+  opts: UploadOpts,
 ): Promise<StoredImage> {
   if (!ALLOWED_MIME[file.mimetype]) {
     throw new AppError(
@@ -44,7 +50,12 @@ export async function uploadImage(
   }
 
   const ext = ALLOWED_MIME[file.mimetype];
-  const relative = `sellers/${opts.sellerId}/products/${opts.productId}/${randomUUID()}.${ext}`;
+  let relative: string;
+  if (opts.keyPrefix) {
+    relative = `${opts.keyPrefix}/${randomUUID()}.${ext}`;
+  } else {
+    relative = `sellers/${opts.sellerId}/products/${opts.productId}/${randomUUID()}.${ext}`;
+  }
   const key = buildObjectKey(relative);
 
   try {

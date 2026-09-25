@@ -1,4 +1,5 @@
 import type { ErrorRequestHandler } from "express";
+import multer from "multer";
 import { ZodError } from "zod";
 import mongoose from "mongoose";
 import AppError from "../appError.js";
@@ -18,10 +19,22 @@ const mongooseFields = (
 
 export const errorHandler: ErrorRequestHandler = (
   err,
-  _req,
+  req,
   res,
   _next,
 ): void => {
+  if (err instanceof multer.MulterError) {
+    const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+    res.status(status).json({
+      message:
+        err.code === "LIMIT_FILE_SIZE"
+          ? "Image exceeds the 5 MB limit."
+          : err.message,
+      code: err.code === "LIMIT_FILE_SIZE" ? "PAYLOAD_TOO_LARGE" : "UPLOAD_ERROR",
+    });
+    return;
+  }
+
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       message: err.message,
@@ -31,9 +44,23 @@ export const errorHandler: ErrorRequestHandler = (
   }
 
   if (err instanceof ZodError) {
+    const passwordIssue = err.issues.some((issue) =>
+      issue.message.includes("password") || issue.message.includes("Password"),
+    );
+    const mismatchIssue = err.issues.some(
+      (issue) => issue.path.join(".") === "confirmPassword",
+    );
+    const isPasswordRoute = req.originalUrl.includes("/account/password");
+    const code = isPasswordRoute
+      ? mismatchIssue
+        ? "PASSWORD_MISMATCH"
+        : passwordIssue
+          ? "WEAK_PASSWORD"
+          : "VALIDATION_ERROR"
+      : "VALIDATION_ERROR";
     res.status(400).json({
       message: "Validation failed",
-      code: "VALIDATION_ERROR",
+      code,
       fields: zodFields(err),
     });
     return;

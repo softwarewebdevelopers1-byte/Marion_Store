@@ -10,6 +10,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import type { HttpError } from "../services/http";
 import { useToast } from "../components/ui";
+import { syncStoreConfig } from "../config/store";
+import { accountService } from "../services";
 
 export type SellerRole = "SELLER" | "ADMIN";
 export type SellerStatus =
@@ -28,7 +30,13 @@ export interface SellerStore {
   themeColor?: string;
   currency: string;
   supportHours?: string;
-  social?: { whatsapp?: string };
+  social?: {
+    whatsapp?: string;
+    instagram?: string;
+    facebook?: string;
+    tiktok?: string;
+    x?: string;
+  };
 }
 
 export interface PublicSeller {
@@ -38,6 +46,45 @@ export interface PublicSeller {
   role: SellerRole;
   status: SellerStatus;
   store: SellerStore;
+}
+
+export interface FullSeller {
+  id: string;
+  email: string;
+  phone: string;
+  displayName: string;
+  role: SellerRole;
+  status: SellerStatus;
+  store: SellerStore;
+  address?: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    county?: string;
+    country?: string;
+    postalCode?: string;
+  };
+  business?: {
+    legalName?: string;
+    regNumber?: string;
+    taxPin?: string;
+    isVerified?: boolean;
+  };
+  payout?: {
+    provider: "MPESA" | "BANK" | "STRIPE" | "NONE";
+    accountRef?: string;
+    bankName?: string;
+    isVerified?: boolean;
+  };
+  settings: {
+    defaultLowStockThreshold: number;
+    autoHideOutOfStock: boolean;
+    notifyLowStock: boolean;
+    notifyNewInquiry: boolean;
+  };
+  createdAt: string;
+  updatedAt: string;
+  requiresReverification?: boolean;
 }
 
 interface Tokens {
@@ -55,10 +102,12 @@ export type AuthStatus = "idle" | "loading" | "authed" | "unauthed";
 
 interface AuthContextValue {
   seller: PublicSeller | null;
+  fullSeller: FullSeller | null;
   status: AuthStatus;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<string | null>;
+  refreshAccount: () => Promise<FullSeller | null>;
 }
 
 const STORAGE_KEYS = {
@@ -94,6 +143,16 @@ function readTokens(): AuthState {
   return { accessToken, refreshToken, seller };
 }
 
+function readFullSeller(): FullSeller | null {
+  const raw = localStorage.getItem("mp.fullSeller");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as FullSeller;
+  } catch {
+    return null;
+  }
+}
+
 function persistTokens(accessToken: string | null, refreshToken: string | null): void {
   if (accessToken) {
     localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
@@ -125,6 +184,22 @@ async function fetchMe(
     throw err;
   }
   return res.json();
+}
+
+async function fetchFullSeller(
+  accessToken: string,
+): Promise<FullSeller> {
+  const res = await fetch(`${BASE_URL}/admin/account`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = new Error(
+      res.status === 401 ? "Session expired" : "Unable to load account",
+    ) as HttpError;
+    (err as { status: number }).status = res.status;
+    throw err;
+  }
+  return res.json() as Promise<FullSeller>;
 }
 
 async function fetchLogin(
@@ -186,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [seller, setSeller] = useState<PublicSeller | null>(
     readTokens().seller,
   );
+  const [fullSeller, setFullSeller] = useState<FullSeller | null>(readFullSeller);
   const [tokens, setTokens] = useState<{
     accessToken: string | null;
     refreshToken: string | null;
@@ -205,20 +281,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setTokens({ accessToken, refreshToken });
-    setSeller(cachedSeller);
+     setTokens({ accessToken, refreshToken });
+    setSeller((s) => s ?? null);
     setStatus("loading");
 
     let cancelled = false;
     void cachedSeller;
 
     fetchMe(accessToken)
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled) return;
         const sellerData = result.seller;
         setSeller(sellerData);
         localStorage.setItem(STORAGE_KEYS.seller, JSON.stringify(sellerData));
         setStatus("authed");
+        try {
+          const full = await accountService.get();
+          setFullSeller(full);
+          localStorage.setItem("mp.fullSeller", JSON.stringify(full));
+          syncStoreConfig(full);
+        } catch {
+          // Non-fatal: settings page will retry
+        }
       })
       .catch(async (err) => {
         if (cancelled) return;
@@ -241,17 +325,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               JSON.stringify(result.seller),
             );
             setStatus("authed");
+            try {
+              const full = await accountService.get();
+              setFullSeller(full);
+              localStorage.setItem("mp.fullSeller", JSON.stringify(full));
+              syncStoreConfig(full);
+            } catch {
+              // Non-fatal
+            }
           } catch {
             persistTokens(null, null);
             localStorage.removeItem(STORAGE_KEYS.seller);
+            localStorage.removeItem("mp.fullSeller");
             setSeller(null);
+            setFullSeller(null);
             setTokens({ accessToken: null, refreshToken: null });
             setStatus("unauthed");
           }
         } else {
           persistTokens(null, null);
           localStorage.removeItem(STORAGE_KEYS.seller);
+          localStorage.removeItem("mp.fullSeller");
           setSeller(null);
+          setFullSeller(null);
           setTokens({ accessToken: null, refreshToken: null });
           setStatus("unauthed");
         }
@@ -267,7 +363,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const onExpired = () => {
       persistTokens(null, null);
       localStorage.removeItem(STORAGE_KEYS.seller);
+      localStorage.removeItem("mp.fullSeller");
       setSeller(null);
+      setFullSeller(null);
       setTokens({ accessToken: null, refreshToken: null });
       setStatus("unauthed");
       push("Session expired. Please sign in again.", "error");
@@ -308,7 +406,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               } catch {
                 persistTokens(null, null);
                 localStorage.removeItem(STORAGE_KEYS.seller);
+                localStorage.removeItem("mp.fullSeller");
                 setSeller(null);
+                setFullSeller(null);
                 setTokens({ accessToken: null, refreshToken: null });
                 setStatus("unauthed");
                 return null;
@@ -337,11 +437,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fetch full seller profile via /me
       try {
         const meResult = await fetchMe(result.tokens.accessToken);
-        const fullSeller = meResult.seller;
-        setSeller(fullSeller);
-        localStorage.setItem(STORAGE_KEYS.seller, JSON.stringify(fullSeller));
+        const sellerData = meResult.seller;
+        setSeller(sellerData);
+        localStorage.setItem(STORAGE_KEYS.seller, JSON.stringify(sellerData));
       } catch {
-        // If /me fails, use minimal seller from login response
         const minimalSeller: PublicSeller = {
           id: result.seller.id,
           displayName: "",
@@ -358,6 +457,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(STORAGE_KEYS.seller, JSON.stringify(minimalSeller));
       }
 
+      // Fetch full account data for settings page
+      try {
+        const full = await fetchFullSeller(result.tokens.accessToken);
+        setFullSeller(full);
+        localStorage.setItem("mp.fullSeller", JSON.stringify(full));
+        syncStoreConfig(full);
+      } catch {
+        // Non-fatal
+      }
+
       setStatus("authed");
     },
     [],
@@ -367,7 +476,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = tokens.accessToken;
     persistTokens(null, null);
     localStorage.removeItem(STORAGE_KEYS.seller);
+    localStorage.removeItem("mp.fullSeller");
     setSeller(null);
+    setFullSeller(null);
     setTokens({ accessToken: null, refreshToken: null });
     setStatus("unauthed");
 
@@ -406,15 +517,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [tokens.refreshToken]);
 
+  const refreshAccount = useCallback(async (): Promise<FullSeller | null> => {
+    if (!tokens.accessToken && !tokens.refreshToken) return null;
+    try {
+      const full = await accountService.get();
+      setFullSeller(full);
+      localStorage.setItem("mp.fullSeller", JSON.stringify(full));
+      const publicSeller: PublicSeller = {
+        id: full.id,
+        email: full.email,
+        displayName: full.displayName,
+        role: full.role,
+        status: full.status,
+        store: full.store,
+      };
+      setSeller(publicSeller);
+      localStorage.setItem(STORAGE_KEYS.seller, JSON.stringify(publicSeller));
+      syncStoreConfig(full);
+      return full;
+    } catch (err) {
+      const httpErr = err as { status?: number };
+      if (httpErr.status === 401 || httpErr.status === 403) {
+        const refreshed = await refresh();
+        if (refreshed) {
+          try {
+            const full = await fetchFullSeller(refreshed);
+            setFullSeller(full);
+            localStorage.setItem("mp.fullSeller", JSON.stringify(full));
+            const publicSeller: PublicSeller = {
+              id: full.id,
+              email: full.email,
+              displayName: full.displayName,
+              role: full.role,
+              status: full.status,
+              store: full.store,
+            };
+            setSeller(publicSeller);
+            localStorage.setItem(STORAGE_KEYS.seller, JSON.stringify(publicSeller));
+            syncStoreConfig(full);
+            return full;
+          } catch {
+            return null;
+          }
+        }
+      }
+      return null;
+    }
+  }, [tokens.accessToken, tokens.refreshToken, refresh]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       seller,
+      fullSeller,
       status,
       login,
       logout,
       refresh,
+      refreshAccount,
     }),
-    [seller, status, login, logout, refresh],
+    [seller, fullSeller, status, login, logout, refresh, refreshAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

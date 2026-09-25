@@ -5,6 +5,7 @@ export interface JwtPayload {
   type: "access" | "refresh";
   iat?: number;
   exp?: number;
+  passwordChangedAt?: number;
 }
 
 export interface Tokens {

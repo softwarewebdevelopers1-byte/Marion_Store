@@ -13,6 +13,7 @@ const Dashboard = lazy(() => import("./components/admin/Dashboard"));
 const ProductsList = lazy(() => import("./components/admin/ProductsList"));
 const ProductEditor = lazy(() => import("./components/admin/ProductEditor"));
 const Inventory = lazy(() => import("./components/admin/Inventory"));
+const Settings = lazy(() => import("./pages/admin/Settings"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 function PageFallback() {
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="products" element={<ProductsList />} />
             <Route path="products/:id" element={<ProductEditor />} />
             <Route path="inventory" element={<Inventory />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

@@ -3,6 +3,10 @@ export type SellerStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "CLOSED";
 
 export interface SellerSocial {
   whatsapp: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+  x?: string;
 }
 
 export interface SellerStore {
@@ -11,7 +15,9 @@ export interface SellerStore {
   tagline?: string;
   description?: string;
   logoUrl?: string;
+  logoKey?: string;
   bannerUrl?: string;
+  bannerKey?: string;
   themeColor?: string;
   currency: string;
   supportHours?: string;
@@ -38,21 +44,32 @@ export interface SellerStats {
 }
 
 export interface SellerAddress {
+  line1?: string;
+  line2?: string;
   city?: string;
   county?: string;
   country?: string;
+  postalCode?: string;
 }
 
 export interface SellerPayout {
   method?: string;
   payeeName?: string;
   account?: string;
+  provider?: "MPESA" | "BANK" | "STRIPE" | "NONE";
+  accountRef?: string;
+  bankName?: string;
+  isVerified?: boolean;
 }
 
 export interface SellerBusiness {
   name?: string;
   registration?: string;
   taxId?: string;
+  legalName?: string;
+  regNumber?: string;
+  taxPin?: string;
+  isVerified?: boolean;
 }
 
 export interface Seller {

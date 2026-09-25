@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+
 const env = import.meta.env;
 
 interface StoreConfig {
@@ -31,6 +33,25 @@ const defaults: StoreConfig = {
 };
 
 export const storeConfig: StoreConfig = { ...defaults };
+let storeConfigVersion = 0;
+const storeConfigListeners = new Set<() => void>();
+
+function notifyStoreConfig(): void {
+  storeConfigVersion += 1;
+  for (const listener of storeConfigListeners) listener();
+}
+
+export function useStoreConfig(): StoreConfigType {
+  useSyncExternalStore(
+    (listener) => {
+      storeConfigListeners.add(listener);
+      return () => storeConfigListeners.delete(listener);
+    },
+    () => storeConfigVersion,
+    () => storeConfigVersion,
+  );
+  return storeConfig;
+}
 
 export type StoreConfigType = StoreConfig;
 
@@ -99,4 +120,45 @@ function applyStoreConfig(data: ApiStoreConfig): void {
   if (data.banner) storeConfig.banner = data.banner;
   if (data.slug) storeConfig.slug = data.slug;
   if (data.tagline) storeConfig.tagline = data.tagline;
+  notifyStoreConfig();
+}
+
+export function syncStoreConfig(seller: {
+  store?: {
+    name?: string;
+    slug?: string;
+    tagline?: string;
+    description?: string;
+    logoUrl?: string;
+    bannerUrl?: string;
+    themeColor?: string;
+    currency?: string;
+    supportHours?: string;
+    social?: { whatsapp?: string };
+  };
+  displayName?: string;
+}): void {
+  const store = seller.store;
+  if (!store) return;
+  const data: ApiStoreConfig = {
+    name: store.name,
+    slug: store.slug,
+    tagline: store.tagline,
+    description: store.description,
+    logo: store.logoUrl,
+    banner: store.bannerUrl,
+    themeColor: store.themeColor,
+    currency: store.currency,
+    supportHours: store.supportHours,
+    whatsappNumber: store.social?.whatsapp,
+    sellerName: seller.displayName,
+  };
+  applyStoreConfig(data);
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ ts: Date.now(), data }),
+  );
+  window.dispatchEvent(
+    new CustomEvent("storeConfig:updated", { detail: data }),
+  );
 }

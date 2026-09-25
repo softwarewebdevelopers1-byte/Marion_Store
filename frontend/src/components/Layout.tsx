@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { storeConfig } from "../config/store";
+import { useStoreConfig } from "../config/store";
 import { Icons } from "./ui";
 
 export default function Layout() {
   const { pathname } = useLocation();
+  const storeConfig = useStoreConfig();
 
   useEffect(() => {
     window.scrollTo({ top: 0 });

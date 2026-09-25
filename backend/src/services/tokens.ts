@@ -9,13 +9,19 @@ import type {
 import type { StringValue } from "ms";
 
 function sign(
-  seller: AuthenticatedSeller,
+  seller: AuthenticatedSeller & { passwordChangedAt?: number },
   secret: string,
   expiresIn: string,
   type: "access" | "refresh",
 ): string {
   return jwt.sign(
-    { sub: seller.id, role: seller.role, status: seller.status, type },
+    {
+      sub: seller.id,
+      role: seller.role,
+      status: seller.status,
+      type,
+      ...(seller.passwordChangedAt ? { passwordChangedAt: seller.passwordChangedAt } : {}),
+    },
     secret,
     { expiresIn: expiresIn as StringValue },
   );

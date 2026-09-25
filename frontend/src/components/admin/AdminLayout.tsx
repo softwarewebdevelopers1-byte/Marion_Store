@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { storeConfig } from "../../config/store";
+import { useStoreConfig } from "../../config/store";
 import { useAuth } from "../../auth/AuthContext";
 import { Icons } from "../ui";
 
@@ -23,10 +23,17 @@ const nav = [
     label: "Inventory",
     icon: <Icons.Trend size={18} />,
   },
+  {
+    to: "/admin/settings",
+    end: false,
+    label: "Settings",
+    icon: <Icons.Settings size={18} />,
+  },
 ];
 
 export default function AdminLayout() {
   const { logout, seller } = useAuth();
+  const storeConfig = useStoreConfig();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === "undefined") return true;
     if (window.matchMedia("(min-width: 861px)").matches) return true;

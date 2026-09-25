@@ -15,8 +15,15 @@ import type {
 import { config } from "../config.js";
 
 function digits(v: string): boolean {
-  return /^\+?\d{7,15}$/.test(v);
+  return /^\d{10,15}$/.test(v);
 }
+
+export function maskAccountRef(ref: string | undefined): string | undefined {
+  if (!ref) return undefined;
+  if (ref.length <= 4) return "*".repeat(ref.length);
+  return ref.slice(0, 2) + "*".repeat(ref.length - 4) + ref.slice(-2);
+}
+
 
 const socialSchema = new Schema<SellerSocial & Document>(
   {
@@ -29,6 +36,10 @@ const socialSchema = new Schema<SellerSocial & Document>(
         message: "WhatsApp number must contain only digits (E.164)",
       },
     },
+    instagram: { type: String, trim: true },
+    facebook: { type: String, trim: true },
+    tiktok: { type: String, trim: true },
+    x: { type: String, trim: true },
   },
   { _id: false },
 );
@@ -49,9 +60,11 @@ const storeSchema = new Schema<SellerStore & Document>(
     tagline: { type: String, trim: true },
     description: { type: String, trim: true },
     logoUrl: { type: String },
+    logoKey: { type: String, select: false },
     bannerUrl: { type: String },
+    bannerKey: { type: String, select: false },
     themeColor: { type: String, default: "#0f172a" },
-    currency: { type: String, default: "KES", uppercase: true },
+    currency: { type: String, default: "KES", uppercase: true, maxlength: 3 },
     supportHours: { type: String },
     social: socialSchema,
   },
@@ -85,9 +98,12 @@ const statsSchema = new Schema<SellerStats & Document>(
 
 const addressSchema = new Schema<SellerAddress & Document>(
   {
-    city: { type: String },
-    county: { type: String },
-    country: { type: String },
+    line1: { type: String, trim: true },
+    line2: { type: String, trim: true },
+    city: { type: String, trim: true },
+    county: { type: String, trim: true },
+    country: { type: String, trim: true, default: "Kenya" },
+    postalCode: { type: String, trim: true },
   },
   { _id: false },
 );
@@ -95,17 +111,29 @@ const addressSchema = new Schema<SellerAddress & Document>(
 const payoutSchema = new Schema<SellerPayout & Document>(
   {
     method: { type: String },
-    payeeName: { type: String },
-    account: { type: String },
+    payeeName: { type: String, trim: true },
+    account: { type: String, trim: true, select: false },
+    provider: {
+      type: String,
+      enum: ["MPESA", "BANK", "STRIPE", "NONE"],
+      default: "NONE",
+    },
+    accountRef: { type: String, trim: true },
+    bankName: { type: String, trim: true },
+    isVerified: { type: Boolean, default: false },
   },
   { _id: false },
 );
 
 const businessSchema = new Schema<SellerBusiness & Document>(
   {
-    name: { type: String },
-    registration: { type: String },
-    taxId: { type: String },
+    name: { type: String, trim: true },
+    registration: { type: String, trim: true },
+    taxId: { type: String, trim: true },
+    legalName: { type: String, trim: true },
+    regNumber: { type: String, trim: true },
+    taxPin: { type: String, trim: true },
+    isVerified: { type: Boolean, default: false },
   },
   { _id: false },
 );
@@ -118,6 +146,7 @@ export interface SellerDocument extends Document {
   status: SellerStatus;
   passwordHash: string;
   refreshTokenHash: string | null;
+  passwordChangedAt: Date | null;
   emailVerifiedAt: Date | null;
   store: SellerStore;
   settings: SellerSettings;
@@ -127,8 +156,27 @@ export interface SellerDocument extends Document {
   business?: SellerBusiness;
   comparePassword(pw: string): Promise<boolean>;
   toPublicJSON(): PublicSeller;
+  toAdminJSON(): SellerAdminJSON;
   isActive: boolean;
   storeName: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SellerAdminJSON {
+  id: string;
+  email: string;
+  phone: string;
+  displayName: string;
+  role: string;
+  status: string;
+  store: SellerStore;
+  address?: SellerAddress;
+  business?: SellerBusiness;
+  payout?: SellerPayout;
+  settings: SellerSettings;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const SellerSchema = new Schema<SellerDocument>(
@@ -161,6 +209,7 @@ const SellerSchema = new Schema<SellerDocument>(
     },
     passwordHash: { type: String, select: false },
     refreshTokenHash: { type: String, select: false },
+    passwordChangedAt: { type: Date, default: null },
     emailVerifiedAt: { type: Date, default: null },
     store: storeSchema,
     settings: settingsSchema,
@@ -179,6 +228,7 @@ const SellerSchema = new Schema<SellerDocument>(
         delete ret.__v;
         delete ret.passwordHash;
         delete ret.refreshTokenHash;
+        delete ret.passwordChangedAt;
       },
     },
   },
@@ -200,6 +250,51 @@ SellerSchema.methods.comparePassword = async function (
 ): Promise<boolean> {
   if (!this.passwordHash) return false;
   return bcrypt.compare(pw, this.passwordHash);
+};
+
+SellerSchema.methods.toAdminJSON = function (
+  this: SellerDocument,
+): SellerAdminJSON {
+  const store = this.store;
+  const payout = this.payout;
+  return {
+    id: this._id.toString(),
+    email: this.email,
+    phone: this.phone,
+    displayName: this.displayName,
+    role: this.role,
+    status: this.status,
+    store: {
+      slug: store?.slug ?? "",
+      name: store?.name ?? "",
+      tagline: store?.tagline,
+      description: store?.description,
+      logoUrl: store?.logoUrl,
+      bannerUrl: store?.bannerUrl,
+      themeColor: store?.themeColor ?? "#0f172a",
+      currency: store?.currency ?? "KES",
+      supportHours: store?.supportHours,
+      social: store?.social ?? { whatsapp: "" },
+    },
+    address: this.address,
+    business: this.business,
+    payout: payout
+      ? {
+          provider: payout.provider,
+          accountRef: maskAccountRef(payout.accountRef),
+          bankName: payout.bankName,
+          isVerified: payout.isVerified,
+        }
+      : undefined,
+    settings: {
+      defaultLowStockThreshold: this.settings?.defaultLowStockThreshold ?? 5,
+      autoHideOutOfStock: this.settings?.autoHideOutOfStock ?? false,
+      notifyLowStock: this.settings?.notifyLowStock ?? false,
+      notifyNewInquiry: this.settings?.notifyNewInquiry ?? false,
+    },
+    createdAt: this.createdAt?.toISOString(),
+    updatedAt: this.updatedAt?.toISOString(),
+  };
 };
 
 SellerSchema.methods.toPublicJSON = function (

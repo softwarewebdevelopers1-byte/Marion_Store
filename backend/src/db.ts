@@ -24,6 +24,7 @@ export async function syncIndexes(): Promise<void> {
     (await import("./models/Product.js")).ProductModel,
     (await import("./models/InventoryMovement.js")).InventoryMovementModel,
     (await import("./models/Order.js")).OrderModel,
+    (await import("./models/SellerAuditLog.js")).SellerAuditLogModel,
   ];
   for (const m of models) {
     await m.syncIndexes();

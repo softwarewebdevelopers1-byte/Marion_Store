@@ -45,7 +45,7 @@ export async function login(
   const seller = await SellerModel.findOne({
     email: input.email.toLowerCase(),
   })
-    .select("+passwordHash")
+    .select("+passwordHash +passwordChangedAt")
     .exec();
   if (!seller) throw new AppError(401, "Invalid credentials", "UNAUTHORIZED");
 
@@ -56,10 +56,11 @@ export async function login(
     throw new AppError(403, "Seller account is not active", "ACCOUNT_NOT_ACTIVE");
   }
 
-  const authenticated: AuthenticatedSeller = {
+  const authenticated: AuthenticatedSeller & { passwordChangedAt?: number } = {
     id: seller._id.toString(),
     role: seller.role,
     status: seller.status,
+    passwordChangedAt: seller.passwordChangedAt?.getTime(),
   };
 
   const tokens = issueTokens(authenticated);
@@ -105,20 +106,33 @@ export async function refresh(refreshToken: string): Promise<Tokens> {
   }
 
   const seller = await SellerModel.findById(payload.sub)
-    .select("+refreshTokenHash")
+    .select("+refreshTokenHash +passwordChangedAt")
     .lean()
     .exec();
   if (!seller) throw new AppError(401, "Seller not found", "UNAUTHORIZED");
 
-  if (seller.refreshTokenHash) {
-    const valid = await compareHash(refreshToken, seller.refreshTokenHash);
-    if (!valid) throw new AppError(401, "Invalid refresh token", "UNAUTHORIZED");
+  if (!seller.refreshTokenHash) {
+    throw new AppError(401, "Invalid refresh token", "UNAUTHORIZED");
+  }
+  const valid = await compareHash(refreshToken, seller.refreshTokenHash);
+  if (!valid) throw new AppError(401, "Invalid refresh token", "UNAUTHORIZED");
+
+  // Invalidate tokens issued before password change
+  const tokenIat = payload.iat;
+  const pwdChanged = seller.passwordChangedAt;
+  if (tokenIat && pwdChanged && tokenIat < pwdChanged.getTime() / 1000) {
+    throw new AppError(
+      401,
+      "Session expired due to password change on another device",
+      "SESSION_INVALIDATED",
+    );
   }
 
-  const authenticated: AuthenticatedSeller = {
+  const authenticated: AuthenticatedSeller & { passwordChangedAt?: number } = {
     id: seller._id.toString(),
     role: seller.role,
     status: seller.status,
+    passwordChangedAt: seller.passwordChangedAt?.getTime(),
   };
 
   const tokens = issueTokens(authenticated);
