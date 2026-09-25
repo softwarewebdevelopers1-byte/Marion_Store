@@ -117,10 +117,9 @@ function slugify(input: string): string {
 }
 
 async function main(): Promise<void> {
-  const mongoUri =
-    process.env.MONGO_URI ||
-    process.env.LOCAL_MONGO_DB_URI ||
-    "mongodb://127.0.0.1:27017/marion_store";
+  const mongoUri = process.env.LIVE_MONGO_DB_URI
+    ? process.env.LIVE_MONGO_DB_URI
+    : process.exit(1);
 
   await mongoose.connect(mongoUri);
   logger.info("Connected to MongoDB for seeding");

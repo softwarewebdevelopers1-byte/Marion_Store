@@ -22,7 +22,8 @@ if (!r2Endpoint && process.env.NODE_ENV !== "test") {
 }
 
 const r2AccessKey = process.env.R2_ACCESS_KEY || process.env.R2_ACCESS_KEY_ID;
-const r2SecretKey = process.env.R2_SECRET_KEY || process.env.R2_SECRET_ACCESS_KEY;
+const r2SecretKey =
+  process.env.R2_SECRET_KEY || process.env.R2_SECRET_ACCESS_KEY;
 
 if (!r2AccessKey && !r2SecretKey && process.env.NODE_ENV !== "test") {
   throw new Error(
@@ -32,10 +33,7 @@ if (!r2AccessKey && !r2SecretKey && process.env.NODE_ENV !== "test") {
 
 export const config = {
   port: num("PORT", 4000),
-  mongoUri:
-    process.env.MONGO_URI ||
-    process.env.LOCAL_MONGO_DB_URI ||
-    "mongodb://127.0.0.1:27017/marion_store",
+  mongoUri: process.env.LIVE_MONGO_DB_URI,
   nodeEnv: process.env.NODE_ENV || "development",
   isProd: process.env.NODE_ENV === "production",
   jwtAccessSecret:
@@ -47,10 +45,9 @@ export const config = {
   bcryptRounds: num("BCRYPT_ROUNDS", 10),
   allowRegistration: process.env.ALLOW_REGISTRATION === "true",
   corsOrigin,
-  publicBaseUrl: (process.env.PUBLIC_BASE_URL || "http://localhost:4000").replace(
-    /\/+$/,
-    "",
-  ),
+  publicBaseUrl: (
+    process.env.PUBLIC_BASE_URL || "http://localhost:4000"
+  ).replace(/\/+$/, ""),
   uploadDir: process.env.UPLOAD_DIR || "./uploads",
   rateLimitGeneral: num("RATE_LIMIT_GENERAL", 300),
   rateLimitAuth: num("RATE_LIMIT_AUTH", 10),
