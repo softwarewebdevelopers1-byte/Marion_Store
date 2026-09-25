@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { productService } from "../../services/productService";
+import { productService } from "../../services";
 import type { Category, Product, ProductInput } from "../../types";
 import { CATEGORIES } from "../../types";
 import { Icons, QuantityStepper, useToast } from "../../components/ui";
@@ -26,6 +26,8 @@ export default function ProductEditor() {
 
   const [form, setForm] = useState<ProductInput>(EMPTY);
   const [imageInput, setImageInput] = useState("");
+  const [imageKeys, setImageKeys] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
@@ -62,7 +64,7 @@ export default function ProductEditor() {
           name,
           description,
           price,
-          compareAtPrice,
+          compareAtPrice: compareAtPrice ?? undefined,
           images,
           category,
           stockQuantity,
@@ -70,6 +72,7 @@ export default function ProductEditor() {
           isFeatured,
           isActive,
         });
+        setImageKeys(p.imageKeys ?? []);
       })
       .finally(() => alive && setLoading(false));
     return () => {
@@ -114,18 +117,51 @@ export default function ProductEditor() {
     set("images", [...form.images, url]);
     setImageInput("");
   }
+
   function removeImage(i: number) {
+    if (!isNew) {
+      const key = imageKeys[i];
+      if (key) {
+        productService
+          .removeImage(id!, key)
+          .catch(() => push("Could not remove image.", "error"));
+      }
+    }
+    const nextKeys = [...imageKeys];
+    nextKeys.splice(i, 1);
+    setImageKeys(nextKeys);
     set(
       "images",
       form.images.filter((_, idx) => idx !== i),
     );
   }
+
   function moveImage(i: number, dir: -1 | 1) {
     const next = [...form.images];
+    const nextKeys = [...imageKeys];
     const j = i + dir;
     if (j < 0 || j >= next.length) return;
     [next[i], next[j]] = [next[j], next[i]];
+    [nextKeys[i], nextKeys[j]] = [nextKeys[j], nextKeys[i]];
     set("images", next);
+    setImageKeys(nextKeys);
+    if (!isNew && id) {
+      productService
+        .reorderImages(id, nextKeys)
+        .catch(() => push("Could not reorder images.", "error"));
+    }
+  }
+
+  async function uploadFiles(files: FileList) {
+    if (!id || isNew) {
+      push("Save the product first before uploading images.", "error");
+      return;
+    }
+    const uploaded = await productService.uploadImages(id, files);
+    if (uploaded) {
+      set("images", [...form.images, ...uploaded]);
+      push(`${uploaded.length} image(s) uploaded.`, "success");
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -321,8 +357,8 @@ export default function ProductEditor() {
         <section className="card card-pad">
           <h3>Images</h3>
           <p className="small muted">
-            Paste public image URLs. The future backend will accept uploads via
-            <code> POST /api/admin/products/{"{id}"}/images</code>.
+            Add image URLs or upload files. The first image is the
+            cover.&nbsp;{!isNew && "Changes are saved to the backend instantly."}
           </p>
           <div className="row gap-2">
             <input
@@ -341,6 +377,44 @@ export default function ProductEditor() {
               <Icons.Plus size={16} /> Add
             </button>
           </div>
+          {!isNew && (
+            <div
+              style={{ marginTop: 8 }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                uploadFiles(e.dataTransfer.files);
+              }}
+              onClick={() =>
+                document.getElementById("img-upload")?.click()
+              }
+            >
+              <label
+                className={`dropzone ${dragOver ? "drag-over" : ""}`}
+                htmlFor="img-upload"
+              >
+                <div className="dropzone-icon">
+                  <Icons.Box size={24} />
+                </div>
+                <div className="small muted">
+                  Drop image files here or click to browse
+                </div>
+              </label>
+              <input
+                id="img-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(e) => uploadFiles(e.target.files!)}
+              />
+            </div>
+          )}
           {errors.images && (
             <div className="field-error" style={{ marginTop: 6 }}>
               {errors.images}

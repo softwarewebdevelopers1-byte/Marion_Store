@@ -14,7 +14,7 @@ import {
 const router = Router({ mergeParams: true });
 
 const reorderSchema = z.object({
-  orderedUrls: z.array(z.string().min(1)),
+  orderedKeys: z.array(z.string().min(1)),
 });
 
 router.post(
@@ -26,7 +26,7 @@ router.post(
 );
 
 router.delete(
-  "/:id/images/:index",
+  "/:id/images/:key",
   requireAuth,
   requireActiveSeller,
   asyncHandler(deleteProductImage),

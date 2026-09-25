@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { productService, subscribe } from "../../services/productService";
+import { productService, subscribe } from "../../services";
 import type { Product } from "../../types";
 import { formatPrice, formatDate } from "../../utils/format";
 import {

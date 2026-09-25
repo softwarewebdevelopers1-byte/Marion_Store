@@ -252,6 +252,28 @@ export const productService = {
     );
     return { total: products.length, inStock, low, out, hidden, value };
   },
+
+  /** POST /api/admin/products/{id}/images */
+  async uploadImages(id: string, files: FileList): Promise<string[]> {
+    void id;
+    void files;
+    await delay();
+    return [];
+  },
+
+  /** DELETE /api/admin/products/{id}/images/{key} */
+  async removeImage(id: string, key: string): Promise<void> {
+    void id;
+    void key;
+    await delay();
+  },
+
+  /** PATCH /api/admin/products/{id}/images/reorder */
+  async reorderImages(id: string, orderedKeys: string[]): Promise<void> {
+    void id;
+    void orderedKeys;
+    await delay();
+  },
 };
 
 export type ProductService = typeof productService;

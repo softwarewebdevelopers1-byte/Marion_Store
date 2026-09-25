@@ -23,7 +23,8 @@ interface ProductDef {
 const productDefs: ProductDef[] = [
   {
     name: "Premium Wireless Headphones",
-    description: "High-quality noise-cancelling wireless headphones with 30hr battery life.",
+    description:
+      "High-quality noise-cancelling wireless headphones with 30hr battery life.",
     price: 12999,
     images: ["/images/headphones.jpg"],
     category: "Electronics",
@@ -34,7 +35,8 @@ const productDefs: ProductDef[] = [
   },
   {
     name: "Stainless Steel Water Bottle",
-    description: "1L insulated stainless steel water bottle keeps drinks hot or cold for 24 hours.",
+    description:
+      "1L insulated stainless steel water bottle keeps drinks hot or cold for 24 hours.",
     price: 3499,
     images: ["/images/bottle.jpg"],
     category: "Home",
@@ -45,7 +47,8 @@ const productDefs: ProductDef[] = [
   },
   {
     name: "Running Shoes",
-    description: "Lightweight running shoes with responsive cushioning for daily training.",
+    description:
+      "Lightweight running shoes with responsive cushioning for daily training.",
     price: 7999,
     images: ["/images/shoes.jpg"],
     category: "Shoes",
@@ -56,7 +59,8 @@ const productDefs: ProductDef[] = [
   },
   {
     name: "Leather Wallet",
-    description: "Handcrafted genuine leather wallet with multiple card slots and RFID protection.",
+    description:
+      "Handcrafted genuine leather wallet with multiple card slots and RFID protection.",
     price: 2999,
     images: ["/images/wallet.jpg"],
     category: "Accessories",
@@ -78,7 +82,8 @@ const productDefs: ProductDef[] = [
   },
   {
     name: "Smart Watch",
-    description: "Fitness tracking smart watch with heart rate monitor and 7-day battery.",
+    description:
+      "Fitness tracking smart watch with heart rate monitor and 7-day battery.",
     price: 15999,
     images: ["/images/watch.jpg"],
     category: "Electronics",
@@ -89,7 +94,8 @@ const productDefs: ProductDef[] = [
   },
   {
     name: "Perfume Set",
-    description: "Set of 3 premium perfume bottles with long-lasting fragrance.",
+    description:
+      "Set of 3 premium perfume bottles with long-lasting fragrance.",
     price: 5999,
     images: ["/images/perfume.jpg"],
     category: "Beauty",
@@ -132,16 +138,19 @@ async function main(): Promise<void> {
 
   let seller;
   if (isKeep) {
-    seller = await SellerModel.findOne({ role: "SELLER", status: "ACTIVE" }).exec();
+    seller = await SellerModel.findOne({
+      role: "SELLER",
+      status: "ACTIVE",
+    }).exec();
     if (!seller) {
       throw new Error("No existing active seller found");
     }
   } else {
-    const passwordHash = await hashPassword("password123");
+    const passwordHash = await hashPassword("seller@2026#254");
     seller = await SellerModel.create({
-      email: "demo@example.com",
-      phone: "+254700000000",
-      displayName: "Demo Seller",
+      email: "marionwanga05@gmail.com",
+      phone: "+254743689883",
+      displayName: "Marion",
       role: "SELLER",
       status: "ACTIVE",
       passwordHash,
@@ -150,9 +159,9 @@ async function main(): Promise<void> {
         name: "Marion Store",
         slug: "marion-store",
         tagline: "Your one-stop shop",
-        description: "A demonstration store for Marion Store",
+        description: "An online store for Marion",
         currency: "KES",
-        social: { whatsapp: "+254700000000" },
+        social: { whatsapp: "+254743689883" },
       },
     });
   }

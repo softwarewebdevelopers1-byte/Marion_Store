@@ -2,11 +2,13 @@ import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
+import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ToastProvider } from "./components/ui";
 
 const Home = lazy(() => import("./pages/Home"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Login = lazy(() => import("./pages/Login"));
 const Dashboard = lazy(() => import("./components/admin/Dashboard"));
 const ProductsList = lazy(() => import("./components/admin/ProductsList"));
 const ProductEditor = lazy(() => import("./components/admin/ProductEditor"));
@@ -32,12 +34,19 @@ export default function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/products" element={<Products />} />
             <Route path="/products/:slug" element={<ProductDetail />} />
           </Route>
 
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >            <Route index element={<Dashboard />} />
             <Route path="products" element={<ProductsList />} />
             <Route path="products/:id" element={<ProductEditor />} />
             <Route path="inventory" element={<Inventory />} />

@@ -77,7 +77,7 @@ export async function deleteProductImage(
 ): Promise<void> {
   const sellerId = req.seller!.id;
   const productId = req.params.id as string;
-  const index = parseInt(req.params.index as string, 10);
+  const { key } = req.params as unknown as { key: string };
 
   const product = await ProductModel.findOne({
     _id: productId,
@@ -90,14 +90,15 @@ export async function deleteProductImage(
     throw new AppError(404, "Product not found", "NOT_FOUND");
   }
 
-  if (!Number.isInteger(index) || index < 0 || index >= product.images.length) {
-    throw new AppError(400, "Invalid image index", "INVALID_INDEX");
+  const idx = product.imageKeys.indexOf(key);
+  if (idx === -1) {
+    throw new AppError(404, "Image key not found", "NOT_FOUND");
   }
 
-  const key = product.removeImageAt(index);
+  const removedKey = product.removeImageAt(idx);
 
   try {
-    await deleteImage(key);
+    await deleteImage(removedKey);
   } catch (err) {
     throw new AppError(
       502,
@@ -117,7 +118,7 @@ export async function reorderProductImages(
 ): Promise<void> {
   const sellerId = req.seller!.id;
   const productId = req.params.id as string;
-  const { orderedUrls } = req.validated!.body as { orderedUrls: string[] };
+  const { orderedKeys } = req.validated!.body as { orderedKeys: string[] };
 
   const product = await ProductModel.findOne({
     _id: productId,
@@ -130,29 +131,29 @@ export async function reorderProductImages(
     throw new AppError(404, "Product not found", "NOT_FOUND");
   }
 
-  if (orderedUrls.length !== product.images.length) {
+  if (orderedKeys.length !== product.images.length) {
     throw new AppError(400, "Reordered list length does not match", "INVALID_PERMUTATION");
   }
 
-  const urlToKey = new Map<string, string>();
-  for (let i = 0; i < product.images.length; i++) {
+  const keyToImage = new Map<string, string>();
+  for (let i = 0; i < product.imageKeys.length; i++) {
     const k = product.imageKeys[i] ?? "";
-    urlToKey.set(product.images[i]!, k);
+    if (k) keyToImage.set(k, product.images[i]!);
   }
 
   const seen = new Set<string>();
-  for (const url of orderedUrls) {
-    if (!urlToKey.has(url)) {
-      throw new AppError(400, `URL not found in current images: ${url}`, "INVALID_PERMUTATION");
+  for (const key of orderedKeys) {
+    if (!keyToImage.has(key)) {
+      throw new AppError(400, `Key not found in current image keys: ${key}`, "INVALID_PERMUTATION");
     }
-    if (seen.has(url)) {
-      throw new AppError(400, `Duplicate URL in reorder: ${url}`, "INVALID_PERMUTATION");
+    if (seen.has(key)) {
+      throw new AppError(400, `Duplicate key in reorder: ${key}`, "INVALID_PERMUTATION");
     }
-    seen.add(url);
+    seen.add(key);
   }
 
-  product.images = orderedUrls;
-  product.imageKeys = orderedUrls.map((u) => urlToKey.get(u) ?? "");
+  product.images = orderedKeys.map((k) => keyToImage.get(k) ?? "");
+  product.imageKeys = [...orderedKeys];
 
   await product.save();
   invalidateStoreCache();

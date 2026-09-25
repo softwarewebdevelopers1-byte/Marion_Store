@@ -1064,3 +1064,88 @@ table.data tr:hover td {
   background: var(--border);
   margin: 16px 0;
 }
+
+/* ---------- Login page ---------- */
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  padding: 16px;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 32px;
+  width: 100%;
+  max-width: 420px;
+}
+.login-head {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.login-head img {
+  border-radius: 12px;
+}
+.login-footer {
+  text-align: center;
+  margin-top: 16px;
+}
+.login-footer a {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+.login-footer a:hover {
+  color: var(--text);
+}
+@media (max-width: 480px) {
+  .login-card {
+    padding: 24px 16px;
+  }
+}
+
+/* ---------- Input group (password toggle) ---------- */
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+.input-group .input {
+  padding-right: 40px;
+}
+.input-group .btn-icon {
+  position: absolute;
+  right: 6px;
+  margin: auto;
+  height: fit-content;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ---------- Drop zone ---------- */
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+  background: var(--surface);
+}
+.dropzone:hover {
+  border-color: var(--accent);
+  background: hsl(210 40% 98%);
+}
+.dropzone.drag-over {
+  border-color: var(--accent);
+  background: hsl(210 50% 95%);
+}
+.dropzone-input {
+  display: none;
+}
+.dropzone-icon {
+  margin-bottom: 6px;
+}
+

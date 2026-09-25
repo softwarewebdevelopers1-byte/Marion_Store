@@ -3,7 +3,8 @@ import { asyncHandler } from "../middleware/asyncHandler.js";
 import { authLimiter } from "../middleware/rateLimit.js";
 import { validate } from "../middleware/validate.js";
 import { loginSchema, refreshSchema, registerSchema } from "../schemas/index.js";
-import { login, refresh, register } from "../services/auth.js";
+import { login, refresh, register, me, logout } from "../services/auth.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 import { z } from "zod";
 import { config } from "../config.js";
 
@@ -44,6 +45,24 @@ router.post(
     const input = req.validated!.body as z.infer<typeof refreshSchema>;
     const tokens = await refresh(input.refreshToken);
     res.json({ tokens });
+  }),
+);
+
+router.get(
+  "/me",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const result = await me(req.seller!.id);
+    res.json(result);
+  }),
+);
+
+router.post(
+  "/logout",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    await logout(req.seller!.id);
+    res.status(204).send();
   }),
 );
 

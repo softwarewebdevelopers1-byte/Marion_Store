@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { storeConfig } from "../../config/store";
+import { useAuth } from "../../auth/AuthContext";
 import { Icons } from "../ui";
 
 const nav = [
@@ -25,6 +26,7 @@ const nav = [
 ];
 
 export default function AdminLayout() {
+  const { logout, seller } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window === "undefined") return true;
     if (window.matchMedia("(min-width: 861px)").matches) return true;
@@ -103,7 +105,18 @@ export default function AdminLayout() {
           >
             {sidebarOpen ? <Icons.X size={20} /> : <Icons.Menu size={20} />}
           </button>
-          <span className="small muted">{storeConfig.name}</span>
+          <span className="small muted" style={{ flex: 1 }}>
+            {seller?.displayName || storeConfig.sellerName}
+          </span>
+          <button
+            type="button"
+            className="btn-icon"
+            title="Logout"
+            onClick={logout}
+            aria-label="Logout"
+          >
+            <Icons.LogOut size={18} />
+          </button>
         </div>
         <Outlet />
       </main>

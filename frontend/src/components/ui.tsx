@@ -131,6 +131,13 @@ export const Icons = {
       <path d="m12 2 3.1 6.3 7 1-5 4.9 1.2 6.9L12 17.8 5.7 21l1.2-6.8-5-4.9 7-1Z" />
     </svg>
   ),
+  LogOut: (p: IconProps) => (
+    <svg {...base(p)}>
+      <path d="M5 5h14v14H5" />
+      <path d="M12 7l7 7-7 7" />
+      <path d="M7 12h7" />
+    </svg>
+  ),
 };
 
 /* ---------- Stock status helper ---------- */

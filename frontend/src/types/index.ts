@@ -25,15 +25,16 @@ export interface Product {
   price: number;
   compareAtPrice?: number;
   images: string[];
+  imageKeys?: string[];
   category: Category;
   stockQuantity: number;
   lowStockThreshold: number;
-  isAvailable: boolean; // derived at read time by service
+  isAvailable: boolean;
   isFeatured: boolean;
-  isActive: boolean; // seller visibility toggle
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  unitsSold?: number; // future aggregation
+  unitsSold?: number;
 }
 
 export type StockStatus = "in-stock" | "low-stock" | "out-of-stock";

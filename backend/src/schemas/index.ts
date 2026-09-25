@@ -20,7 +20,7 @@ export const productInputSchema = z
     name: z.string().min(2).max(140),
     description: z.string().min(2).max(4000),
     price: z.number().min(0),
-    compareAtPrice: z.number().min(0).optional(),
+    compareAtPrice: z.number().min(0).nullable().optional(),
     images: imageList,
     category: categoryEnum,
     stockQuantity: z.number().int().nonnegative(),
@@ -29,7 +29,8 @@ export const productInputSchema = z
     isActive: z.boolean(),
   })
   .refine(
-    (d) => d.compareAtPrice === undefined || d.compareAtPrice > d.price,
+    (d) =>
+      d.compareAtPrice == null || d.compareAtPrice > d.price,
     {
       message: "compareAtPrice must be strictly greater than price",
       path: ["compareAtPrice"],
@@ -52,7 +53,7 @@ export const patchVisibilitySchema = z.object({
 });
 
 export const reorderImagesSchema = z.object({
-  orderedUrls: z.array(z.string().min(1)),
+  orderedKeys: z.array(z.string().min(1)),
 });
 
 export const publicProductsQuerySchema = z.object({

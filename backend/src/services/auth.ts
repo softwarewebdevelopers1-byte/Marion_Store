@@ -2,6 +2,7 @@ import { SellerModel, hashPassword, hashRefresh, compareHash } from "../models/S
 import AppError from "../appError.js";
 import { issueTokens, verifyRefresh } from "./tokens.js";
 import type { AuthenticatedSeller, JwtPayload, Tokens } from "../types/auth.js";
+import type { Seller } from "../types/seller.js";
 import { config } from "../config.js";
 import { invalidateStoreCache } from "./products.js";
 
@@ -29,6 +30,15 @@ export interface RegisterInput {
   };
 }
 
+export interface MeResponse {
+  id: string;
+  displayName: string;
+  email: string;
+  role: string;
+  status: string;
+  store: Seller["store"];
+}
+
 export async function login(
   input: LoginInput,
 ): Promise<{ seller: AuthenticatedSeller; tokens: Tokens }> {
@@ -41,6 +51,10 @@ export async function login(
 
   const valid = await seller.comparePassword(input.password);
   if (!valid) throw new AppError(401, "Invalid credentials", "UNAUTHORIZED");
+
+  if (seller.status !== "ACTIVE") {
+    throw new AppError(403, "Seller account is not active", "ACCOUNT_NOT_ACTIVE");
+  }
 
   const authenticated: AuthenticatedSeller = {
     id: seller._id.toString(),
@@ -56,6 +70,26 @@ export async function login(
   ).exec();
 
   return { seller: authenticated, tokens };
+}
+
+export async function me(sellerId: string): Promise<MeResponse> {
+  const seller = await SellerModel.findById(sellerId).lean().exec();
+  if (!seller) throw new AppError(404, "Seller not found", "NOT_FOUND");
+  return {
+    id: seller._id.toString(),
+    displayName: seller.displayName,
+    email: seller.email,
+    role: seller.role,
+    status: seller.status,
+    store: seller.store,
+  };
+}
+
+export async function logout(sellerId: string): Promise<void> {
+  await SellerModel.updateOne(
+    { _id: sellerId },
+    { $unset: { refreshTokenHash: "" } },
+  ).exec();
 }
 
 export async function refresh(refreshToken: string): Promise<Tokens> {
