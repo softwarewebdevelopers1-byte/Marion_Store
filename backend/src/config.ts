@@ -33,7 +33,9 @@ if (!r2AccessKey && !r2SecretKey && process.env.NODE_ENV !== "test") {
 
 export const config = {
   port: num("PORT", 4000),
-  mongoUri: process.env.LIVE_MONGO_DB_URI,
+  mongoUri: process.env.LIVE_MONGO_DB_URI
+    ? process.env.LIVE_MONGO_DB_URI
+    : process.exit(1),
   nodeEnv: process.env.NODE_ENV || "development",
   isProd: process.env.NODE_ENV === "production",
   jwtAccessSecret:
