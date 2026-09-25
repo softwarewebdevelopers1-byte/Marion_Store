@@ -1,14 +1,16 @@
 import type IApiResponse from "../types/apiResponse.js";
 
-function ApiResponse(
+function ApiResponse<T>(
   Message?: string,
   TimeStamp?: Date,
   Token?: string,
-): IApiResponse {
+  Data?: T,
+): IApiResponse<T> {
   return {
     Message: Message ? Message : null,
     TimeStamp: TimeStamp ? TimeStamp : new Date(),
     Token: Token ? Token : null,
+    Data: Data ?? null,
   };
 }
 

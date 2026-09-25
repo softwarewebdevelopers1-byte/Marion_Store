@@ -4,17 +4,18 @@ import showBanner from "node-banner";
 import DbConnect from "./database/DbConnect.js";
 import RegUserRouter from "./auth/registerSeller.js";
 import LoginRouter from "./auth/login.js";
-import RequestFilter from "./global/GlobalReqFilter.js";
+import GetProductsRouter from "./controller/GetProducts.js";
+import GetAllProducts from "./service/GetProduct.js";
 
 const app = express();
 
 app.use(express.json());
 
-app.use(RequestFilter);
-
 app.use("/api/user", RegUserRouter);
 
 app.use("/api/user", LoginRouter);
+
+app.use("/api/products", GetAllProducts);
 
 const server = app.listen(DotEnvFile().Port, () => {
   DbConnect();
