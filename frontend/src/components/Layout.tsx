@@ -136,6 +136,17 @@ export default function Layout() {
             </span>
             <span className="tiny">Prices in {storeConfig.currency}</span>
           </div>
+          <div className="row between wrap gap-2" style={{ marginTop: 16 }}>
+            <span className="tiny muted">
+              Built by <strong>carlozTechnologies</strong>
+            </span>
+            <div className="row gap-4 tiny muted">
+              <a href="tel:+254757475316">0757 475 316</a>
+              <a href="mailto:softwarewebdevelopers1@gmail.com">
+                softwarewebdevelopers1@gmail.com
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </>
