@@ -148,7 +148,7 @@ async function main(): Promise<void> {
     const passwordHash = await hashPassword("seller@2026#254");
     seller = await SellerModel.create({
       email: "marionwanga05@gmail.com",
-      phone: "+254743689883",
+      phone: "254743689883",
       displayName: "Marion",
       role: "SELLER",
       status: "ACTIVE",
@@ -160,7 +160,7 @@ async function main(): Promise<void> {
         tagline: "Your one-stop shop",
         description: "An online store for Marion",
         currency: "KES",
-        social: { whatsapp: "+254743689883" },
+        social: { whatsapp: "254743689883" },
       },
     });
   }

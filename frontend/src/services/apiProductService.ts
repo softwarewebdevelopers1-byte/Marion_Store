@@ -6,6 +6,15 @@ import type {
   Paginated,
 } from "../types";
 
+const listeners = new Set<() => void>();
+function emit() {
+  listeners.forEach((l) => l());
+}
+export function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 function toProduct(raw: Record<string, unknown>): Product {
   return raw as unknown as Product;
 }
@@ -89,6 +98,7 @@ export const productService = {
         body: JSON.stringify(input),
       },
     );
+    emit();
     return toProduct(raw);
   },
 
@@ -100,11 +110,13 @@ export const productService = {
         body: JSON.stringify(input),
       },
     );
+    emit();
     return toProduct(raw);
   },
 
   async remove(id: string): Promise<void> {
     await http<void>(`/products/admin/${id}`, { method: "DELETE" });
+    emit();
   },
 
   async patchStock(id: string, quantity: number): Promise<Product> {
@@ -117,6 +129,7 @@ export const productService = {
     );
     const product = await fetchProduct(id);
     if (!product) throw new Error("Product not found after stock update");
+    emit();
     return product;
   },
 
@@ -131,6 +144,7 @@ export const productService = {
         body: JSON.stringify({ isAvailable }),
       },
     );
+    emit();
     return toProduct(raw);
   },
 
@@ -142,6 +156,7 @@ export const productService = {
         body: JSON.stringify({ isActive }),
       },
     );
+    emit();
     return toProduct(raw);
   },
 
@@ -197,11 +212,3 @@ export const productService = {
     );
   },
 };
-
-export function subscribe(fn: () => void): () => void {
-  void fn;
-  // No-op: the API has no WebSocket or server-sent events channel.
-  // Pages refetch on navigation; for real-time updates, callers
-  // can use the returned unsubscribe to wire up polling if needed.
-  return () => {};
-}

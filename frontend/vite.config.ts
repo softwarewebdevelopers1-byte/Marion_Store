@@ -46,7 +46,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:4000",
+        target: "marion-store-kenya.up.railway.app",
         changeOrigin: true,
         secure: false,
       },
