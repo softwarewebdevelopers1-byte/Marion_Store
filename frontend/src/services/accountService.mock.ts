@@ -37,11 +37,22 @@ let mockSeller: FullSeller = {
     accountRef: "2547**5678",
     isVerified: true,
   },
-  settings: {
+   settings: {
     defaultLowStockThreshold: 5,
     autoHideOutOfStock: false,
     notifyLowStock: true,
     notifyNewInquiry: true,
+  },
+  stats: {
+    totalProducts: 14,
+    totalOrders: 0,
+    totalRevenue: 0,
+    totalUnitsSold: 0,
+    lowStockItems: 0,
+    outOfStockItems: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    cancelledOrders: 0,
   },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),

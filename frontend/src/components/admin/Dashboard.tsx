@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { productService, subscribe } from "../../services";
+import { useAuth } from "../../auth/AuthContext";
 import type { Product } from "../../types";
 import { formatPrice } from "../../utils/format";
 import { Icons, StockBadge } from "../../components/ui";
@@ -8,6 +9,7 @@ import { Icons, StockBadge } from "../../components/ui";
 type Summary = Awaited<ReturnType<typeof productService.inventorySummary>>;
 
 export default function Dashboard() {
+  const { fullSeller } = useAuth();
   const [summary, setSummary] = useState<Summary | null>(null);
 
   useEffect(() => {
@@ -81,26 +83,36 @@ export default function Dashboard() {
 
       <div className="divider" style={{ margin: "28px 0" }} />
 
-      {/* Demo sales block (clearly labelled) */}
+      {/* Sales snapshot from real seller stats */}
       <section style={{ marginBottom: 32 }}>
         <div className="row between" style={{ marginBottom: 12 }}>
           <h2 style={{ margin: 0, fontSize: "1.125rem" }}>Sales snapshot</h2>
-          <span className="badge badge-info">Demo data</span>
         </div>
         <div className="stats-grid">
           <Stat
-            label="Today's sales"
-            value={formatPrice(18500)}
-            hint="Demo — not persisted"
+            label="Total revenue"
+            value={formatPrice(fullSeller?.stats?.totalRevenue ?? 0)}
+            hint="All completed orders"
+            accent="#166534"
           />
-          <Stat label="Orders" value="12" hint="Demo" />
-          <Stat label="Pending" value="3" hint="Demo" />
-          <Stat label="Completed" value="9" hint="Demo" />
+          <Stat
+            label="Orders"
+            value={String(fullSeller?.stats?.totalOrders ?? 0)}
+            hint="Total orders received"
+          />
+          <Stat
+            label="Pending"
+            value={String(fullSeller?.stats?.pendingOrders ?? 0)}
+            hint="Awaiting fulfillment"
+            accent="#92400e"
+          />
+          <Stat
+            label="Completed"
+            value={String(fullSeller?.stats?.completedOrders ?? 0)}
+            hint="Finished orders"
+            accent="#2563eb"
+          />
         </div>
-        <p className="tiny muted" style={{ marginTop: 8 }}>
-          Sales figures are placeholder values. The order & payment backend is
-          not yet connected.
-        </p>
       </section>
 
       <div className="divider" style={{ margin: "28px 0" }} />

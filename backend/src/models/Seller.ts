@@ -171,6 +171,7 @@ export interface SellerAdminJSON {
   role: string;
   status: string;
   store: SellerStore;
+  stats: SellerStats;
   address?: SellerAddress;
   business?: SellerBusiness;
   payout?: SellerPayout;
@@ -276,6 +277,7 @@ SellerSchema.methods.toAdminJSON = function (
       supportHours: store?.supportHours,
       social: store?.social ?? { whatsapp: "" },
     },
+    stats: this.stats as unknown as SellerStats,
     address: this.address,
     business: this.business,
     payout: payout

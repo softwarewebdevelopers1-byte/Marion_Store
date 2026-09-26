@@ -20,6 +20,18 @@ export type SellerStatus =
   | "SUSPENDED"
   | "CLOSED";
 
+export interface SellerStats {
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  totalUnitsSold: number;
+  lowStockItems: number;
+  outOfStockItems: number;
+  pendingOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+}
+
 export interface SellerStore {
   slug: string;
   name: string;
@@ -56,6 +68,7 @@ export interface FullSeller {
   role: SellerRole;
   status: SellerStatus;
   store: SellerStore;
+  stats?: SellerStats;
   address?: {
     line1?: string;
     line2?: string;

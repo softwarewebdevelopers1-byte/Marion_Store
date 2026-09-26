@@ -121,6 +121,18 @@ export type SellerRole = "SELLER" | "ADMIN";
 export type SellerStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "CLOSED";
 export type PayoutProvider = "MPESA" | "BANK" | "STRIPE" | "NONE";
 
+export interface SellerStats {
+  totalProducts: number;
+  totalOrders: number;
+  totalRevenue: number;
+  totalUnitsSold: number;
+  lowStockItems: number;
+  outOfStockItems: number;
+  pendingOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+}
+
 export interface SellerSocial {
   whatsapp?: string;
   instagram?: string;
@@ -180,6 +192,7 @@ export interface FullSeller {
   role: SellerRole;
   status: SellerStatus;
   store: FullSellerStore;
+  stats?: SellerStats;
   address?: SellerAddress;
   business?: SellerBusiness;
   payout?: SellerPayout;
