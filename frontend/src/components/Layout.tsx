@@ -53,7 +53,7 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <nav className="bottom-bar show-mobile" aria-label="Mobile navigation">
+      <nav className="bottom-bar" aria-label="Mobile navigation">
         <NavLink
           to="/"
           end

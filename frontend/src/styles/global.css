@@ -367,7 +367,6 @@ p {
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
-  display: flex;
   align-items: flex-end;
   gap: 4px;
   padding-inline: 16px;
@@ -375,6 +374,7 @@ p {
   padding-right: max(12px, env(safe-area-inset-right));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 60;
+  display: none;
 }
 .bottom-bar a {
   flex: 1;
@@ -400,6 +400,9 @@ p {
 }
 
 @media (max-width: 720px) {
+  .bottom-bar {
+    display: flex;
+  }
   #main {
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
