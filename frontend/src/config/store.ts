@@ -116,7 +116,10 @@ function applyStoreConfig(data: ApiStoreConfig): void {
   if (data.logo) storeConfig.logo = data.logo;
   if (data.currency) storeConfig.currency = data.currency;
   if (data.supportHours) storeConfig.supportHours = data.supportHours;
-  if (data.themeColor) storeConfig.themeColor = data.themeColor;
+  if (data.themeColor) {
+    storeConfig.themeColor = data.themeColor;
+    document.documentElement.style.setProperty("--primary", data.themeColor);
+  }
   if (data.banner) storeConfig.banner = data.banner;
   if (data.slug) storeConfig.slug = data.slug;
   if (data.tagline) storeConfig.tagline = data.tagline;

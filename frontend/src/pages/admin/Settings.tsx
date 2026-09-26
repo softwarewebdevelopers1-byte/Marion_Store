@@ -571,12 +571,14 @@ function StoreForm({
             className="input"
             style={{ padding: 0, height: 40, width: 60 }}
             value={(storeRecord.themeColor ?? "#0f172a") as string}
-            onChange={(e) =>
+            onChange={(e) => {
+              const color = e.target.value;
+              document.documentElement.style.setProperty("--primary", color);
               set((p) => ({
                 ...p,
-                store: { ...(p.store ?? {}), themeColor: e.target.value },
-              }))
-            }
+                store: { ...(p.store ?? {}), themeColor: color },
+              }));
+            }}
           />
           <input
             id="storeColorHex"
@@ -584,13 +586,31 @@ function StoreForm({
             aria-label="Theme colour hex value"
             pattern="#[0-9A-Fa-f]{6}"
             value={(storeRecord.themeColor ?? "#0f172a") as string}
-            onChange={(e) =>
+            onChange={(e) => {
+              const color = e.target.value;
+              if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                document.documentElement.style.setProperty("--primary", color);
+              }
               set((p) => ({
                 ...p,
-                store: { ...(p.store ?? {}), themeColor: e.target.value },
-              }))
-            }
+                store: { ...(p.store ?? {}), themeColor: color },
+              }));
+            }}
           />
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              document.documentElement.style.setProperty("--primary", "#0f172a");
+              set((p) => ({
+                ...p,
+                store: { ...(p.store ?? {}), themeColor: "#0f172a" },
+              }));
+            }}
+            style={{ marginTop: 6 }}
+          >
+            Reset to default
+          </button>
         </div>
         <div className="field grow" style={{ minWidth: 160 }}>
           <label className="label" htmlFor="storeCurrency">
