@@ -111,10 +111,25 @@ export default function ProductDetail() {
         {/* Gallery */}
         <div className="gallery">
           <div className="gallery__main">
-            <img
-              src={product.images[activeImg]}
-              alt={`${product.name} — image ${activeImg + 1}`}
-            />
+            {product.images[activeImg] ? (
+              <img
+                src={product.images[activeImg]}
+                alt={`${product.name} — image ${activeImg + 1}`}
+              />
+            ) : (
+              <div
+                className="row"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--muted)",
+                }}
+              >
+                <Icons.Box size={40} />
+              </div>
+            )}
           </div>
           {product.images.length > 1 && (
             <div

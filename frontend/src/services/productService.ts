@@ -254,25 +254,60 @@ export const productService = {
   },
 
   /** POST /api/admin/products/{id}/images */
-  async uploadImages(id: string, files: FileList): Promise<string[]> {
-    void id;
-    void files;
-    await delay();
-    return [];
+  async uploadImages(
+    id: string,
+    files: FileList | File[],
+  ): Promise<{ images: string[]; imageKeys: string[] }> {
+    const idx = products.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error("Product not found");
+    await delay(400);
+    const existing = products[idx];
+    const added = Array.from(files);
+    const images = [
+      ...existing.images,
+      ...added.map((f) => URL.createObjectURL(f)),
+    ];
+    const imageKeys = [
+      ...(existing.imageKeys ?? []),
+      ...added.map(() => `mock/products/${id}/${crypto.randomUUID()}`),
+    ];
+    products = products.map((p) =>
+      p.id === id ? { ...p, images, imageKeys, updatedAt: new Date().toISOString() } : p,
+    );
+    emit();
+    return { images, imageKeys };
   },
 
   /** DELETE /api/admin/products/{id}/images/{key} */
   async removeImage(id: string, key: string): Promise<void> {
-    void id;
-    void key;
+    const idx = products.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error("Product not found");
     await delay();
+    const existing = products[idx];
+    const i = (existing.imageKeys ?? []).indexOf(key);
+    if (i === -1) return;
+    const images = existing.images.filter((_, idx2) => idx2 !== i);
+    const imageKeys = (existing.imageKeys ?? []).filter((_, idx2) => idx2 !== i);
+    products = products.map((p) =>
+      p.id === id ? { ...p, images, imageKeys, updatedAt: new Date().toISOString() } : p,
+    );
+    emit();
   },
 
   /** PATCH /api/admin/products/{id}/images/reorder */
   async reorderImages(id: string, orderedKeys: string[]): Promise<void> {
-    void id;
-    void orderedKeys;
+    const idx = products.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error("Product not found");
     await delay();
+    const existing = products[idx];
+    const keys = existing.imageKeys ?? [];
+    const images = orderedKeys.map((k) => existing.images[keys.indexOf(k)] ?? "");
+    products = products.map((p) =>
+      p.id === id
+        ? { ...p, images, imageKeys: [...orderedKeys], updatedAt: new Date().toISOString() }
+        : p,
+    );
+    emit();
   },
 };
 

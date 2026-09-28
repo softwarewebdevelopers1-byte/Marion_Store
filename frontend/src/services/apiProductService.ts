@@ -177,26 +177,40 @@ export const productService = {
     return data;
   },
 
-  async uploadImages(productId: string, files: FileList): Promise<string[]> {
+  /**
+   * POST /api/admin/products/:id/images
+   * Returns the product's full image list after the upload so the caller can
+   * resync instead of appending (the server returns the whole product).
+   */
+  async uploadImages(
+    productId: string,
+    files: FileList | File[],
+  ): Promise<{ images: string[]; imageKeys: string[] }> {
+    const list = Array.from(files);
     const form = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      form.append("images", files[i]);
+    for (const file of list) {
+      form.append("images", file);
     }
-    const raw = await http<{ images: string[]; imageKeys: string[] }>(
+    const raw = await http<{ images?: string[]; imageKeys?: string[] }>(
       `/admin/products/${productId}/images`,
       {
         method: "POST",
         body: form,
       },
     );
-    return raw.images;
+    emit();
+    return {
+      images: raw.images ?? [],
+      imageKeys: raw.imageKeys ?? [],
+    };
   },
 
   async removeImage(productId: string, key: string): Promise<void> {
     await http(
-      `/admin/products/${productId}/images/${key}`,
+      `/admin/products/${productId}/images/${encodeURIComponent(key)}`,
       { method: "DELETE" },
     );
+    emit();
   },
 
   async reorderImages(

@@ -13,7 +13,22 @@ export function ProductCard({ product }: { product: Product }) {
         aria-label={`View ${product.name}`}
       >
         <div className="product-card__media">
-          <img src={product.images[0]} alt={product.name} loading="lazy" />
+          {product.images[0] ? (
+            <img src={product.images[0]} alt={product.name} loading="lazy" />
+          ) : (
+            <div
+              className="row"
+              style={{
+                width: "100%",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--muted)",
+              }}
+            >
+              <Icons.Box size={32} />
+            </div>
+          )}
           {out && <span className="badge badge-danger">Out of stock</span>}
           {!out &&
             product.compareAtPrice &&

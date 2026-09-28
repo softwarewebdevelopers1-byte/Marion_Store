@@ -1,11 +1,19 @@
 import type { Request, Response } from "express";
 import { Types } from "mongoose";
-import { ProductModel } from "../models/Product.js";
+import { ProductModel, type ProductDocument } from "../models/Product.js";
 import { uploadImage, deleteImage, deleteImages } from "../services/storage.service.js";
 import { invalidateStoreCache } from "../services/products.js";
 import AppError from "../appError.js";
 
 const asObjectId = (id: string) => new Types.ObjectId(id);
+
+/** The seller UI needs the R2 keys to delete/reorder the stored objects. */
+function withImageKeys(product: ProductDocument): Record<string, unknown> {
+  return {
+    ...(product.toJSON() as Record<string, unknown>),
+    imageKeys: [...(product.imageKeys ?? [])],
+  };
+}
 
 export async function uploadProductImages(
   req: Request,
@@ -68,7 +76,7 @@ export async function uploadProductImages(
   }
 
   invalidateStoreCache();
-  res.json(product.toJSON());
+  res.json(withImageKeys(product));
 }
 
 export async function deleteProductImage(
@@ -109,7 +117,7 @@ export async function deleteProductImage(
 
   await product.save();
   invalidateStoreCache();
-  res.json(product.toJSON());
+  res.json(withImageKeys(product));
 }
 
 export async function reorderProductImages(
@@ -157,5 +165,5 @@ export async function reorderProductImages(
 
   await product.save();
   invalidateStoreCache();
-  res.json(product.toJSON());
+  res.json(withImageKeys(product));
 }

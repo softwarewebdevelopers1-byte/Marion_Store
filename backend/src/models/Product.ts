@@ -48,8 +48,8 @@ const ProductSchema = new Schema<ProductDocument>(
       type: [String],
       default: [],
       validate: {
-        validator: (v: string[]) => Array.isArray(v) && v.length > 0,
-        message: "Add at least one image",
+        validator: (v: string[]) => Array.isArray(v),
+        message: "Images must be an array of URLs",
       },
     },
     imageKeys: {

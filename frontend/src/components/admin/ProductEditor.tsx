@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { productService } from "../../services";
-import type { Category, Product, ProductInput } from "../../types";
+import type { Category, ProductInput } from "../../types";
 import { CATEGORIES } from "../../types";
-import { Icons, QuantityStepper, useToast } from "../../components/ui";
+import { Icons, QuantityStepper, useToast } from "../ui";
+import ImageDropzone from "../ImageDropzone";
+import { IMAGE_MAX_COUNT } from "../../utils/imageUpload";
 
 const EMPTY: ProductInput = {
   name: "",
@@ -18,6 +20,19 @@ const EMPTY: ProductInput = {
   isActive: true,
 };
 
+/** A file picked before the product exists; uploaded once the product is saved. */
+type StagedFile = { id: string; file: File; preview: string };
+
+type ImageTile = {
+  key: string;
+  src: string;
+  name: string;
+  index: number;
+  pending: boolean;
+  stagedId?: string;
+};
+
+
 export default function ProductEditor() {
   const { id } = useParams();
   const isNew = id === "new" || !id;
@@ -27,16 +42,22 @@ export default function ProductEditor() {
   const [form, setForm] = useState<ProductInput>(EMPTY);
   const [imageInput, setImageInput] = useState("");
   const [imageKeys, setImageKeys] = useState<string[]>([]);
-  const [dragOver, setDragOver] = useState(false);
+  const [staged, setStaged] = useState<StagedFile[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
 
+  const totalImages = form.images.length + staged.length;
+  const remaining = IMAGE_MAX_COUNT - totalImages;
+  const stagedRef = useRef<StagedFile[]>([]);
+
   useEffect(() => {
-    if (isNew) {
-      setForm(EMPTY);
-      return;
-    }
+    stagedRef.current = staged;
+  }, [staged]);
+
+  useEffect(() => {
+    if (isNew) return;
     let alive = true;
     setLoading(true);
     productService
@@ -72,13 +93,24 @@ export default function ProductEditor() {
           isFeatured,
           isActive,
         });
-        setImageKeys(p.imageKeys ?? []);
+        setImageKeys(
+          p.imageKeys && p.imageKeys.length === images.length
+            ? p.imageKeys
+            : images.map(() => ""),
+        );
       })
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
   }, [id, isNew, navigate, push]);
+
+  useEffect(
+    () => () => {
+      stagedRef.current.forEach((s) => URL.revokeObjectURL(s.preview));
+    },
+    [],
+  );
 
   function set<K extends keyof ProductInput>(key: K, value: ProductInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -102,7 +134,10 @@ export default function ProductEditor() {
     if (form.stockQuantity < 0) e.stockQuantity = "Stock cannot be negative.";
     if (form.lowStockThreshold < 0)
       e.lowStockThreshold = "Threshold cannot be negative.";
-    if (form.images.length === 0) e.images = "Add at least one image URL.";
+    if (form.images.length + staged.length === 0)
+      e.images = "Add at least one image — drop files here or paste a URL.";
+    if (form.images.length + staged.length > IMAGE_MAX_COUNT)
+      e.images = `You can upload up to ${IMAGE_MAX_COUNT} images.`;
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -114,22 +149,23 @@ export default function ProductEditor() {
       push("Enter a valid image URL (http/https).", "error");
       return;
     }
+    if (form.images.length + staged.length >= IMAGE_MAX_COUNT) {
+      push(`You can upload up to ${IMAGE_MAX_COUNT} images.`, "error");
+      return;
+    }
     set("images", [...form.images, url]);
+    setImageKeys((k) => [...k, ""]);
     setImageInput("");
   }
 
   function removeImage(i: number) {
-    if (!isNew) {
-      const key = imageKeys[i];
-      if (key) {
-        productService
-          .removeImage(id!, key)
-          .catch(() => push("Could not remove image.", "error"));
-      }
+    const key = imageKeys[i];
+    if (!isNew && key) {
+      productService
+        .removeImage(id!, key)
+        .catch(() => push("Could not remove image from storage.", "error"));
     }
-    const nextKeys = [...imageKeys];
-    nextKeys.splice(i, 1);
-    setImageKeys(nextKeys);
+    setImageKeys((k) => k.filter((_, idx) => idx !== i));
     set(
       "images",
       form.images.filter((_, idx) => idx !== i),
@@ -137,30 +173,72 @@ export default function ProductEditor() {
   }
 
   function moveImage(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= form.images.length) return;
     const next = [...form.images];
     const nextKeys = [...imageKeys];
-    const j = i + dir;
-    if (j < 0 || j >= next.length) return;
     [next[i], next[j]] = [next[j], next[i]];
     [nextKeys[i], nextKeys[j]] = [nextKeys[j], nextKeys[i]];
     set("images", next);
     setImageKeys(nextKeys);
-    if (!isNew && id) {
+    if (!isNew && id && nextKeys.every(Boolean)) {
       productService
         .reorderImages(id, nextKeys)
         .catch(() => push("Could not reorder images.", "error"));
     }
   }
 
-  async function uploadFiles(files: FileList) {
-    if (!id || isNew) {
-      push("Save the product first before uploading images.", "error");
+  function removeStaged(stagedId: string) {
+    setStaged((list) => {
+      const target = list.find((s) => s.id === stagedId);
+      if (target) URL.revokeObjectURL(target.preview);
+      return list.filter((s) => s.id !== stagedId);
+    });
+  }
+
+  /** Drop / browse on an existing product: upload straight to Cloudflare R2. */
+  async function uploadNow(files: File[]) {
+    if (isNew || !id) {
+      setStaged((list) => [
+        ...list,
+        ...files.map((file) => ({
+          id: crypto.randomUUID(),
+          file,
+          preview: URL.createObjectURL(file),
+        })),
+      ]);
+      push(
+        files.length === 1
+          ? "1 image staged. It uploads when you save the product."
+          : `${files.length} images staged. They upload when you save the product.`,
+        "success",
+      );
       return;
     }
-    const uploaded = await productService.uploadImages(id, files);
-    if (uploaded) {
-      set("images", [...form.images, ...uploaded]);
-      push(`${uploaded.length} image(s) uploaded.`, "success");
+
+    setUploading(true);
+    try {
+      const { images, imageKeys: keys } = await productService.uploadImages(
+        id,
+        files,
+      );
+      set("images", images);
+      setImageKeys(
+        keys.length === images.length ? keys : images.map(() => ""),
+      );
+      push(
+        `${files.length} image(s) uploaded to Cloudflare.`,
+        "success",
+      );
+    } catch (err) {
+      push(
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not upload images.",
+        "error",
+      );
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -173,19 +251,70 @@ export default function ProductEditor() {
     setSaving(true);
     try {
       if (isNew) {
-        await productService.create(form);
-        push("Product created successfully.", "success");
+        const created = await productService.create(form);
+        const pending = staged.map((s) => s.file);
+        if (pending.length > 0) {
+          setUploading(true);
+          const { images } = await productService.uploadImages(
+            created.id,
+            pending,
+          );
+          push(
+            `Product created with ${images.length} image(s).`,
+            "success",
+          );
+        } else {
+          push("Product created successfully.", "success");
+        }
       } else {
         await productService.update(id!, form);
-        push("Product updated successfully.", "success");
+        if (staged.length > 0) {
+          setUploading(true);
+          await productService.uploadImages(
+            id!,
+            staged.map((s) => s.file),
+          );
+          push("Product updated and images uploaded.", "success");
+        } else {
+          push("Product updated successfully.", "success");
+        }
       }
+      stagedRef.current.forEach((s) => URL.revokeObjectURL(s.preview));
+      setStaged([]);
       navigate("/admin/products");
-    } catch {
-      push("Could not save product. Please try again.", "error");
+    } catch (err) {
+      push(
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not save product. Please try again.",
+        "error",
+      );
     } finally {
+      setUploading(false);
       setSaving(false);
     }
   }
+
+  const imageGrid = useMemo<ImageTile[]>(
+    () => [
+      ...form.images.map((src, i) => ({
+        key: `${src}#${i}`,
+        src,
+        name: `Image ${i + 1}`,
+        index: i,
+        pending: false,
+      })),
+      ...staged.map((s, n) => ({
+        key: s.id,
+        src: s.preview,
+        name: s.file.name,
+        index: form.images.length + n,
+        pending: true,
+        stagedId: s.id,
+      })),
+    ],
+    [form.images, staged],
+  );
 
   if (loading) return <div className="skeleton" style={{ height: 400 }} />;
 
@@ -357,13 +486,28 @@ export default function ProductEditor() {
         <section className="card card-pad">
           <h3>Images</h3>
           <p className="small muted">
-            Add image URLs or upload files. The first image is the
-            cover.&nbsp;{!isNew && "Changes are saved to the backend instantly."}
+            Drag and drop image files below, or paste an image URL. Files are
+            stored in Cloudflare. The first image is the cover.{" "}
+            {isNew
+              ? "Dropped files upload as soon as you create the product."
+              : "Uploads save instantly."}
           </p>
-          <div className="row gap-2">
+
+          <ImageDropzone
+            onFiles={uploadNow}
+            uploading={uploading}
+            remaining={remaining}
+            label={
+              isNew
+                ? "Drop images here or click to browse"
+                : "Drop images here or click to browse — uploads to Cloudflare"
+            }
+          />
+
+          <div className="row gap-2" style={{ marginTop: 12 }}>
             <input
               className="input"
-              placeholder="https://…"
+              placeholder="https://… (paste an image URL)"
               value={imageInput}
               onChange={(e) => setImageInput(e.target.value)}
               onKeyDown={(e) => {
@@ -374,54 +518,29 @@ export default function ProductEditor() {
               }}
             />
             <button type="button" className="btn btn-ghost" onClick={addImage}>
-              <Icons.Plus size={16} /> Add
+              <Icons.Plus size={16} /> Add URL
             </button>
           </div>
-          {!isNew && (
-            <div
-              style={{ marginTop: 8 }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                uploadFiles(e.dataTransfer.files);
-              }}
-              onClick={() =>
-                document.getElementById("img-upload")?.click()
-              }
-            >
-              <label
-                className={`dropzone ${dragOver ? "drag-over" : ""}`}
-                htmlFor="img-upload"
-              >
-                <div className="dropzone-icon">
-                  <Icons.Box size={24} />
-                </div>
-                <div className="small muted">
-                  Drop image files here or click to browse
-                </div>
-              </label>
-              <input
-                id="img-upload"
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                onChange={(e) => uploadFiles(e.target.files!)}
-              />
-            </div>
-          )}
+
+          <div className="row gap-2 between" style={{ marginTop: 8 }}>
+            <span className="tiny muted">
+              {totalImages} / {IMAGE_MAX_COUNT} images
+            </span>
+            {uploading && (
+              <span className="tiny muted row gap-1">
+                <Icons.Arrow size={12} className="spin" /> Uploading to
+                Cloudflare…
+              </span>
+            )}
+          </div>
+
           {errors.images && (
             <div className="field-error" style={{ marginTop: 6 }}>
               {errors.images}
             </div>
           )}
 
-          {form.images.length > 0 && (
+          {imageGrid.length > 0 && (
             <ul
               style={{
                 listStyle: "none",
@@ -432,28 +551,23 @@ export default function ProductEditor() {
                 gap: 12,
               }}
             >
-              {form.images.map((src, i) => (
+              {imageGrid.map((tile, i) => (
                 <li
-                  key={src + i}
-                  className="card"
-                  style={{ overflow: "hidden" }}
+                  key={tile.key}
+                  className={`card img-tile ${tile.pending ? "is-pending" : ""}`}
                 >
                   <img
-                    src={src}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      aspectRatio: "1",
-                      objectFit: "cover",
-                    }}
+                    className="img-tile-media"
+                    src={tile.src}
+                    alt={tile.name}
                   />
-                  <div className="row between" style={{ padding: 6 }}>
+                  <div className="img-tile-body row between">
                     <div className="row gap-2">
                       <button
                         type="button"
                         className="btn-icon"
-                        disabled={i === 0}
-                        onClick={() => moveImage(i, -1)}
+                        disabled={i === 0 || tile.pending}
+                        onClick={() => moveImage(tile.index, -1)}
                         aria-label="Move image up"
                         style={{ padding: 4, fontSize: 12 }}
                       >
@@ -462,8 +576,11 @@ export default function ProductEditor() {
                       <button
                         type="button"
                         className="btn-icon"
-                        disabled={i === form.images.length - 1}
-                        onClick={() => moveImage(i, 1)}
+                        disabled={
+                          tile.pending ||
+                          tile.index === form.images.length - 1
+                        }
+                        onClick={() => moveImage(tile.index, 1)}
                         aria-label="Move image down"
                         style={{ padding: 4, fontSize: 12 }}
                       >
@@ -473,7 +590,11 @@ export default function ProductEditor() {
                     <button
                       type="button"
                       className="btn-icon"
-                      onClick={() => removeImage(i)}
+                      onClick={() =>
+                        tile.pending
+                          ? removeStaged(tile.stagedId!)
+                          : removeImage(tile.index)
+                      }
                       aria-label="Remove image"
                       style={{ padding: 4, color: "var(--danger)" }}
                     >
@@ -486,6 +607,14 @@ export default function ProductEditor() {
                       style={{ textAlign: "center", paddingBottom: 6 }}
                     >
                       Main image
+                    </div>
+                  )}
+                  {tile.pending && (
+                    <div
+                      className="tiny muted"
+                      style={{ textAlign: "center", paddingBottom: 6 }}
+                    >
+                      Uploads on save
                     </div>
                   )}
                 </li>
@@ -543,6 +672,3 @@ export default function ProductEditor() {
     </>
   );
 }
-
-/* keep Product import referenced */
-void (null as unknown as Product);

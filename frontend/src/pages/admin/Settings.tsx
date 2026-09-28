@@ -3,6 +3,11 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { accountService, isAccountError } from "../../services";
 import { useAuth } from "../../auth/AuthContext";
 import { useToast, QuantityStepper, Icons, Modal, ErrorState } from "../../components/ui";
+import ImageDropzone from "../../components/ImageDropzone";
+import {
+  partitionImageFiles,
+  describeRejections,
+} from "../../utils/imageUpload";
 import type { FullSeller, AccountUpdateBody, FieldErrors } from "../../types";
 
 const TABS = [
@@ -1188,58 +1193,41 @@ function BrandingForm({ data, set }: { data: FullSeller; set: SetterFn }) {
   const store = data.store ?? ({} as Record<string, unknown>);
   const storeRecord = store as unknown as Record<string, unknown>;
 
-  const validateImage = (file: File): boolean => {
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      push("Use a JPEG, PNG, or WebP image.", "error");
-      return false;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      push("Images must be 5 MB or smaller.", "error");
-      return false;
-    }
-    return true;
-  };
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!validateImage(file)) {
-      e.target.value = "";
+  const uploadBranding = async (kind: "logo" | "banner", file: File) => {
+    const isLogo = kind === "logo";
+    const { accepted, rejected } = partitionImageFiles([file], 1);
+    const message = describeRejections(rejected);
+    if (rejected.length > 0) {
+      push(message, "error");
       return;
     }
-    setLogoUploading(true);
+    if (accepted.length === 0) return;
+
+    if (isLogo) setLogoUploading(true);
+    else setBannerUploading(true);
     try {
-      const updated = await accountService.uploadLogo(file);
+      const updated = isLogo
+        ? await accountService.uploadLogo(accepted[0])
+        : await accountService.uploadBanner(accepted[0]);
       set((p) => ({ ...p, store: updated.store }));
-      push("Logo uploaded.", "success");
+      push(isLogo ? "Logo uploaded." : "Banner uploaded.", "success");
       void refreshAccount();
     } catch {
-      push("Could not upload logo.", "error");
+      push(isLogo ? "Could not upload logo." : "Could not upload banner.", "error");
     } finally {
-      setLogoUploading(false);
-      e.target.value = "";
+      if (isLogo) setLogoUploading(false);
+      else setBannerUploading(false);
     }
   };
 
-  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!validateImage(file)) {
-      e.target.value = "";
-      return;
-    }
-    setBannerUploading(true);
-    try {
-      const updated = await accountService.uploadBanner(file);
-      set((p) => ({ ...p, store: updated.store }));
-      push("Banner uploaded.", "success");
-      void refreshAccount();
-    } catch {
-      push("Could not upload banner.", "error");
-    } finally {
-      setBannerUploading(false);
-      e.target.value = "";
-    }
+  const handleLogoUpload = (files: File[]) => {
+    const file = files[0];
+    if (file) void uploadBranding("logo", file);
+  };
+
+  const handleBannerUpload = (files: File[]) => {
+    const file = files[0];
+    if (file) void uploadBranding("banner", file);
   };
 
   const handleRemoveLogo = async () => {
@@ -1279,6 +1267,7 @@ function BrandingForm({ data, set }: { data: FullSeller; set: SetterFn }) {
               display: "flex",
               alignItems: "flex-start",
               gap: 12,
+              flexWrap: "wrap",
             }}
           >
             <img
@@ -1300,46 +1289,25 @@ function BrandingForm({ data, set }: { data: FullSeller; set: SetterFn }) {
               >
                 Remove
               </button>
-              <label
-                className="btn btn-ghost"
-                style={{ cursor: "pointer" }}
-                htmlFor="logo-upload"
-              >
-                Replace
-              </label>
-              <input
-                id="logo-upload"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                hidden
-                onChange={handleLogoUpload}
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <ImageDropzone
+                onFiles={handleLogoUpload}
+                uploading={logoUploading}
+                remaining={1}
+                label="Drop a new logo here or click to browse"
+                hint="512x512 recommended"
               />
             </div>
           </div>
         ) : (
-          <label
-            className="dropzone"
-            htmlFor="logo-upload"
-            style={{ cursor: "pointer" }}
-          >
-            <div className="dropzone-icon">
-              {logoUploading ? (
-                <Icons.Alert size={24} />
-              ) : (
-                <Icons.Box size={24} />
-              )}
-            </div>
-            <div className="small muted">
-              {logoUploading ? "Uploading…" : "Click to upload logo"}
-            </div>
-            <input
-              id="logo-upload"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              hidden
-              onChange={handleLogoUpload}
-            />
-          </label>
+          <ImageDropzone
+            onFiles={handleLogoUpload}
+            uploading={logoUploading}
+            remaining={1}
+            label="Drop your logo here or click to browse"
+            hint="Recommended: 512x512"
+          />
         )}
       </div>
 
@@ -1351,6 +1319,7 @@ function BrandingForm({ data, set }: { data: FullSeller; set: SetterFn }) {
               display: "flex",
               alignItems: "flex-start",
               gap: 12,
+              flexWrap: "wrap",
             }}
           >
             <img
@@ -1372,46 +1341,25 @@ function BrandingForm({ data, set }: { data: FullSeller; set: SetterFn }) {
               >
                 Remove
               </button>
-              <label
-                className="btn btn-ghost"
-                style={{ cursor: "pointer" }}
-                htmlFor="banner-upload"
-              >
-                Replace
-              </label>
-              <input
-                id="banner-upload"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                hidden
-                onChange={handleBannerUpload}
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <ImageDropzone
+                onFiles={handleBannerUpload}
+                uploading={bannerUploading}
+                remaining={1}
+                label="Drop a new banner here or click to browse"
+                hint="1600x900 recommended"
               />
             </div>
           </div>
         ) : (
-          <label
-            className="dropzone"
-            htmlFor="banner-upload"
-            style={{ cursor: "pointer" }}
-          >
-            <div className="dropzone-icon">
-              {bannerUploading ? (
-                <Icons.Alert size={24} />
-              ) : (
-                <Icons.Box size={24} />
-              )}
-            </div>
-            <div className="small muted">
-              {bannerUploading ? "Uploading…" : "Click to upload banner"}
-            </div>
-            <input
-              id="banner-upload"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              hidden
-              onChange={handleBannerUpload}
-            />
-          </label>
+          <ImageDropzone
+            onFiles={handleBannerUpload}
+            uploading={bannerUploading}
+            remaining={1}
+            label="Drop your banner here or click to browse"
+            hint="Recommended: 1600x900"
+          />
         )}
       </div>
     </section>

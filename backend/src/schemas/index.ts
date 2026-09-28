@@ -11,9 +11,7 @@ export const categoryEnum = z.enum([
   "Other",
 ]);
 
-const imageList = z
-  .array(z.string().url().or(z.string().startsWith("/")))
-  .min(1, "Add at least one image URL");
+const imageList = z.array(z.string().url().or(z.string().startsWith("/")));
 
 export const productInputSchema = z
   .object({

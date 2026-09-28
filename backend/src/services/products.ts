@@ -29,6 +29,16 @@ function toProduct(doc: ProductDocument): Product {
   return doc.toJSON() as unknown as Product;
 }
 
+/**
+ * Admin views need the R2 object keys so the seller UI can delete or reorder
+ * the actual stored objects instead of only editing URLs.
+ */
+function toAdminProduct(doc: ProductDocument): Product {
+  const json = toProduct(doc) as unknown as Record<string, unknown>;
+  json.imageKeys = [...(doc.imageKeys ?? [])];
+  return json as unknown as Product;
+}
+
 const asObjectId = (id: string) => new Types.ObjectId(id);
 
 let storeSellerIdCache: string | null | undefined;
@@ -228,8 +238,10 @@ export async function getById(sellerId: string, id: string): Promise<Product | n
   const doc = await ProductModel.findOne({
     _id: id,
     sellerId: asObjectId(sellerId),
-  }).exec();
-  return doc ? toProduct(doc) : null;
+  })
+    .select("+imageKeys")
+    .exec();
+  return doc ? toAdminProduct(doc) : null;
 }
 
 export async function create(
