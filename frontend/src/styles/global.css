@@ -858,6 +858,34 @@ table.data tr:hover td {
   }
 }
 
+/* ---------- PWA install prompt ---------- */
+.install-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.install-prompt p {
+  margin: 0;
+}
+.install-prompt__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.install-prompt__steps {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 /* ---------- States ---------- */
 .state {
   padding: 48px 20px;

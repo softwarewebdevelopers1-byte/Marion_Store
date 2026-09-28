@@ -4,6 +4,7 @@ import Layout from "./components/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ToastProvider } from "./components/ui";
+import InstallPrompt from "./components/InstallPrompt";
 import { fetchStoreConfig } from "./config/store";
 
 const Home = lazy(() => import("./pages/Home"));
@@ -66,6 +67,7 @@ export default function App() {
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <InstallPrompt />
       </Suspense>
     </ToastProvider>
   );
